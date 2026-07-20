@@ -22,4 +22,11 @@ export class CorosAuthenticationService {
   public set userId(value: string | undefined) {
     this._userId = value;
   }
+
+  public useSession(accessToken: string, userId: string): void {
+    assert(accessToken.trim(), 'Access token must not be empty');
+    assert(userId.trim(), 'User id must not be empty');
+    this._accessToken = accessToken.trim();
+    this._userId = userId.trim();
+  }
 }

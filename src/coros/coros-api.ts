@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { LoginRequest } from './account/login.request';
 import { DownloadActivityDetailRequest } from './activity/download-activity-detail.request';
 import { QueryActivitiesRequest } from './activity/query-activities.request';
+import { CorosAuthenticationService } from './coros-authentication.service';
 import { type TeamContext, TrainingHubRequest } from './training-hub/training-hub.request';
 import { QueryTrainingScheduleRequest } from './training-schedule/query-training-schedule.request';
 
@@ -19,6 +20,7 @@ export class CorosAPI {
     downloadActivityDetailCommand: DownloadActivityDetailRequest,
     queryTrainingScheduleCommand: QueryTrainingScheduleRequest,
     trainingHubRequest: TrainingHubRequest,
+    private readonly authentication: CorosAuthenticationService,
   ) {
     this.downloadActivityDetailCommand = downloadActivityDetailCommand;
     this.queryActivitiesCommand = queryActivitiesCommand;
@@ -29,6 +31,11 @@ export class CorosAPI {
 
   async login() {
     return await this.loginCommand.run({});
+  }
+
+  async useSession(accessToken: string, userId: string) {
+    this.authentication.useSession(accessToken, userId);
+    return await this.trainingHubRequest.getAccount();
   }
 
   async queryActivities({
