@@ -6,6 +6,7 @@ import { QueryActivitiesRequest } from './activity/query-activities.request';
 import { CorosConfigService } from './coros.config';
 import { CorosAPI } from './coros-api';
 import { CorosAuthenticationService } from './coros-authentication.service';
+import { TrainingHubRequest } from './training-hub/training-hub.request';
 import { QueryTrainingScheduleRequest } from './training-schedule/query-training-schedule.request';
 
 @Module({
@@ -18,6 +19,7 @@ import { QueryTrainingScheduleRequest } from './training-schedule/query-training
     QueryActivitiesRequest,
     DownloadActivityDetailRequest,
     QueryTrainingScheduleRequest,
+    TrainingHubRequest,
   ],
   exports: [CorosAPI],
 })

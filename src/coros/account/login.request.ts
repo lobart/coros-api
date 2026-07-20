@@ -18,6 +18,8 @@ export type LoginBody = z.infer<typeof LoginBody>;
 
 export const LoginData = z.object({
   accessToken: z.string(),
+  userId: z.union([z.string(), z.number()]).transform(String).optional(),
+  nickname: z.string().optional(),
 });
 export type LoginData = z.infer<typeof LoginData>;
 
@@ -66,8 +68,9 @@ export class LoginRequest extends BaseRequest<LoginInput, LoginResponse, void> {
     this.assertCorosResponse(data);
 
     const {
-      data: { accessToken },
+      data: { accessToken, userId },
     } = data;
     this.corosAuthenticationService.accessToken = accessToken;
+    this.corosAuthenticationService.userId = userId;
   }
 }

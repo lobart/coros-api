@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { LoginRequest } from './account/login.request';
 import { DownloadActivityDetailRequest } from './activity/download-activity-detail.request';
 import { QueryActivitiesRequest } from './activity/query-activities.request';
+import { type TeamContext, TrainingHubRequest } from './training-hub/training-hub.request';
 import { QueryTrainingScheduleRequest } from './training-schedule/query-training-schedule.request';
 
 @Injectable()
@@ -10,17 +11,20 @@ export class CorosAPI {
   private readonly queryActivitiesCommand: QueryActivitiesRequest;
   private readonly downloadActivityDetailCommand: DownloadActivityDetailRequest;
   private readonly queryTrainingScheduleCommand: QueryTrainingScheduleRequest;
+  private readonly trainingHubRequest: TrainingHubRequest;
 
   constructor(
     loginCommand: LoginRequest,
     queryActivitiesCommand: QueryActivitiesRequest,
     downloadActivityDetailCommand: DownloadActivityDetailRequest,
     queryTrainingScheduleCommand: QueryTrainingScheduleRequest,
+    trainingHubRequest: TrainingHubRequest,
   ) {
     this.downloadActivityDetailCommand = downloadActivityDetailCommand;
     this.queryActivitiesCommand = queryActivitiesCommand;
     this.loginCommand = loginCommand;
     this.queryTrainingScheduleCommand = queryTrainingScheduleCommand;
+    this.trainingHubRequest = trainingHubRequest;
   }
 
   async login() {
@@ -65,15 +69,45 @@ export class CorosAPI {
     startDate,
     endDate,
     supportRestExercise = 1,
+    teamId,
+    userId,
   }: {
     startDate: Date;
     endDate: Date;
     supportRestExercise?: number;
+    teamId?: string;
+    userId?: string;
   }) {
     return await this.queryTrainingScheduleCommand.run({
       startDate,
       endDate,
       supportRestExercise,
+      teamId,
+      userId,
     });
+  }
+
+  async getAccount() {
+    return await this.trainingHubRequest.getAccount();
+  }
+
+  async listTeams() {
+    return await this.trainingHubRequest.listTeams();
+  }
+
+  async listTeamMembers(teamId: string) {
+    return await this.trainingHubRequest.listTeamMembers(teamId);
+  }
+
+  async estimateTrainingProgram(program: Record<string, unknown>, context: TeamContext = {}) {
+    return await this.trainingHubRequest.estimateTrainingProgram(program, context);
+  }
+
+  async calculateTrainingProgram(program: Record<string, unknown>, context: TeamContext = {}) {
+    return await this.trainingHubRequest.calculateTrainingProgram(program, context);
+  }
+
+  async updateTrainingSchedule(payload: Record<string, unknown>, context: TeamContext = {}) {
+    return await this.trainingHubRequest.updateTrainingSchedule(payload, context);
   }
 }

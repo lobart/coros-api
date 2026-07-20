@@ -8,11 +8,17 @@ import { CorosResponse } from '../common';
 import { CorosConfigService } from '../coros.config';
 import { CorosAuthenticationService } from '../coros-authentication.service';
 
-export const QueryTrainingScheduleInput = z.object({
-  startDate: z.date(),
-  endDate: z.date(),
-  supportRestExercise: z.number().default(1),
-});
+export const QueryTrainingScheduleInput = z
+  .object({
+    startDate: z.date(),
+    endDate: z.date(),
+    supportRestExercise: z.number().default(1),
+    teamId: z.string().min(1).optional(),
+    userId: z.string().min(1).optional(),
+  })
+  .refine((value) => Boolean(value.teamId) === Boolean(value.userId), {
+    message: 'teamId and userId must be supplied together',
+  });
 export type QueryTrainingScheduleInput = z.infer<typeof QueryTrainingScheduleInput>;
 
 export const TrainingScheduleSportData = z.object({
@@ -85,11 +91,20 @@ export class QueryTrainingScheduleRequest extends BaseRequest<
     url.searchParams.append('startDate', dayjs(input.startDate).format('YYYYMMDD'));
     url.searchParams.append('endDate', dayjs(input.endDate).format('YYYYMMDD'));
     url.searchParams.append('supportRestExercise', String(input.supportRestExercise));
+    if (input.teamId && input.userId) {
+      url.searchParams.append('teamId', input.teamId);
+      url.searchParams.append('userId', input.userId);
+    }
+
+    const headers: Record<string, string> = {
+      accessToken: this.corosAuthenticationService.accessToken,
+    };
+    if (this.corosAuthenticationService.userId) {
+      headers.YFHeader = JSON.stringify({ userId: this.corosAuthenticationService.userId });
+    }
 
     const { data } = await this.httpService.axiosRef.get(url.toString(), {
-      headers: {
-        accessToken: this.corosAuthenticationService.accessToken,
-      },
+      headers,
     });
 
     this.logger.verbose('Query training schedule response', data);

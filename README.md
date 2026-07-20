@@ -70,6 +70,25 @@ pnpm nest start -- export-training-schedule -o ~/Downloads --training-start 07:3
 
 The API used by this project are documented using [Bruno](https://www.usebruno.com/) in the [api folder](./api).
 
+### Training Hub teams and planned workouts
+
+The injectable `CorosAPI` also exposes the Training Hub operations used by
+multi-athlete coaching applications:
+
+- `getAccount()` validates the authenticated account;
+- `listTeams()` and `listTeamMembers(teamId)` discover coach teams;
+- `queryTrainingSchedule(...)` accepts an optional `teamId`/`userId` pair;
+- `estimateTrainingProgram(...)` and `calculateTrainingProgram(...)` validate a program;
+- `updateTrainingSchedule(...)` creates, updates, or removes scheduled programs.
+
+`teamId` and target-athlete `userId` must always be supplied together. When the
+login response contains the account user ID, requests include the corresponding
+`YFHeader`. Access tokens and passwords are never accepted as method arguments
+or logged by these operations.
+
+These endpoints are part of the non-public COROS Training Hub API. Keep them
+behind an application feature flag and expect protocol changes.
+
 ## Licence
 
 [MIT License](LICENSE.md)
