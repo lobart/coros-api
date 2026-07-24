@@ -1,0 +1,35 @@
+{
+  "fixtureId": "live-20260724-bike-time-power",
+  "protocolVersion": "training-hub-web-v1",
+  "observedAt": "2026-07-24T06:35:40.506Z",
+  "region": "eu",
+  "scenario": "bike-time-power",
+  "verifiedOutcome": true,
+  "source": "live disposable research workout; power target round-trip and cleanup verified",
+  "captures": [
+    {
+      "method": "POST",
+      "url": "https://teameuapi.coros.com/training/program/calculate",
+      "responseStatus": 200,
+      "responseResult": "0000",
+      "requestSchemaHash": "c9e8f649ab33f7e0a92e3ad7a23c4b1a783b94c2f9c130495eb0bb1aa4e14b58",
+      "responseSchemaHash": "070bb0719b76acdf384fa329aa8bacb5b24a3eb4bd509f53fd430f3ca2a0677b"
+    },
+    {
+      "method": "POST",
+      "url": "https://teameuapi.coros.com/training/program/add",
+      "responseStatus": 200,
+      "responseResult": "0000",
+      "requestSchemaHash": "40e4cb01213db3bd97c1a527575df5db28cf867834c11d3835a3d5d3d732fd4e",
+      "responseSchemaHash": "8fabec795c6456f7d7e3bbf0ab7f6f478e72cf82fbc936e25d545f70f765508b"
+    },
+    {
+      "method": "POST",
+      "url": "https://teameuapi.coros.com/training/program/query",
+      "responseStatus": 200,
+      "responseResult": "0000",
+      "requestSchemaHash": "265cb541ed8b7531dde35cf9737e1323fc52841348e5cf4ad676d42075078a1f",
+      "responseSchemaHash": "69538a465b60161baa7b264eaa4b26e935dace6cefeede3be5bf938b27d5a4aa"
+    }
+  ]
+}

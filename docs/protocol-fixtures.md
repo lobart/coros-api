@@ -63,7 +63,7 @@ with guessed payloads.
 
 ## Current Evidence
 
-The repository currently contains one EU operator fixture:
+The repository contains the original EU operator schedule fixture:
 
 ```text
 fixtures/protocol/eu/workout-schedule.operator-20260720.json
@@ -75,17 +75,20 @@ It verifies successful calls to:
 - `/training/program/calculate`
 - `/training/schedule/update`
 
-It is schedule-only evidence. It does not contain a verified
-`/training/program/query` capture. Therefore:
+Additional live fixtures recorded on 2026-07-24 confirm:
 
-- `createWorkout` is `false`;
-- `updateWorkout` is `false`;
-- `deleteWorkout` is `false`;
-- `scheduleWorkout` is `false`.
+- calculate/add/query/delete for a disposable simple running workout;
+- an indoor-bike power range surviving a library round-trip;
+- a running repeat group and heart-rate range surviving a round-trip.
 
-Scheduling remains unavailable publicly even though the operator fixture
-confirms the schedule write, because the service must first query the workout
-library and retrieve the mapped program.
+The REST adapter was then exercised against the same account: create, get,
+idempotent create, delete, bike power, running repeat/HR and schedule all
+completed successfully. The scheduled research entry was removed with the
+confirmed `status=3` protocol and the library entry was deleted.
+
+Update is deliberately not verified: a live `program/add` request carrying an
+existing workout ID did not preserve that ID and produced a duplicate. Both
+research entities were removed.
 
 ## Required Fixture Set
 
@@ -93,7 +96,7 @@ To enable the current library operations for a region:
 
 | Capability | Required verified fixture evidence |
 | --- | --- |
-| Create and library query | `run-simple-time`: POST `/training/program/add` and POST `/training/program/query` |
+| Create and library query | `run-simple-time`: POST `/training/program/calculate`, POST `/training/program/add` and POST `/training/program/query` |
 | Update | `workout-update`: POST `/training/program/add`, plus the verified library query above |
 | Delete | `workout-delete`: POST `/training/program/delete` |
 | Schedule | `workout-schedule`: POST `/training/schedule/update`, plus the verified library query above |

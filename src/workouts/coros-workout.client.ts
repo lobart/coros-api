@@ -8,10 +8,11 @@ import { AccountLockService } from '../session/account-lock.service';
 import { COROS_SESSION_STORE, type CorosSession, type CorosSessionStore } from '../session/coros-session';
 
 const Envelope = z.object({
-  apiCode: z.string(),
+  apiCode: z.string().optional(),
   message: z.string(),
   result: z.string(),
-  data: z.unknown(),
+  data: z.unknown().optional(),
+  tlogId: z.string().optional(),
 });
 
 @Injectable()
@@ -80,7 +81,8 @@ export class CorosWorkoutClient {
         throw new CorosIntegrationError(CorosErrorCode.protocolChanged, 'Структура ответа COROS изменилась.');
       }
       if (parsed.data.result !== '0000') {
-        throw new CorosIntegrationError(this.mapProviderError(parsed.data.result), 'COROS отклонил операцию.', false);
+        const code = this.mapProviderError(parsed.data.result);
+        throw new CorosIntegrationError(code, 'COROS отклонил операцию.', false, code === CorosErrorCode.authExpired);
       }
       return parsed.data.data as T;
     };
@@ -111,7 +113,7 @@ export class CorosWorkoutClient {
   }
 
   private mapProviderError(result: string): CorosErrorCode {
-    if (['5006', '401', '403'].includes(result)) return CorosErrorCode.authExpired;
+    if (['1019', '5006', '401', '403'].includes(result)) return CorosErrorCode.authExpired;
     return CorosErrorCode.protocolChanged;
   }
 }

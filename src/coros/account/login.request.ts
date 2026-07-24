@@ -3,7 +3,6 @@ import { URL } from 'node:url';
 import { HttpService } from '@nestjs/axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { z } from 'zod';
-import { redactAccessToken } from '../../core/redact-access-token';
 import { BaseRequest } from '../base-request';
 import { CorosResponse } from '../common';
 import { CorosConfigService } from '../coros.config';
@@ -62,7 +61,7 @@ export class LoginRequest extends BaseRequest<LoginInput, LoginResponse, void> {
       accountType: 2,
       pwd: createHash('md5').update(this.corosConfig.password).digest('hex'),
     } satisfies LoginBody);
-    this.logger.verbose('Login request response', redactAccessToken(data));
+    this.logger.verbose('COROS login response received.');
 
     this.assertCorosResponseBase(data);
     this.assertCorosResponse(data);

@@ -1,0 +1,35 @@
+{
+  "fixtureId": "live-20260724-run-repeat-time-heart-rate",
+  "protocolVersion": "training-hub-web-v1",
+  "observedAt": "2026-07-24T06:36:26.693Z",
+  "region": "eu",
+  "scenario": "run-repeat-time-heart-rate",
+  "verifiedOutcome": true,
+  "source": "live disposable research workout; repeat and HR target round-trip and cleanup verified",
+  "captures": [
+    {
+      "method": "POST",
+      "url": "https://teameuapi.coros.com/training/program/calculate",
+      "responseStatus": 200,
+      "responseResult": "0000",
+      "requestSchemaHash": "e97a124fab185a13633c00d26217f07b522e2c47e80f114d984076070876d68d",
+      "responseSchemaHash": "070bb0719b76acdf384fa329aa8bacb5b24a3eb4bd509f53fd430f3ca2a0677b"
+    },
+    {
+      "method": "POST",
+      "url": "https://teameuapi.coros.com/training/program/add",
+      "responseStatus": 200,
+      "responseResult": "0000",
+      "requestSchemaHash": "9ba8011e5f6bf1fd4fee9d387f4a67f166b6804b570b8f7aaeceaa6d45ee0a24",
+      "responseSchemaHash": "8fabec795c6456f7d7e3bbf0ab7f6f478e72cf82fbc936e25d545f70f765508b"
+    },
+    {
+      "method": "POST",
+      "url": "https://teameuapi.coros.com/training/program/query",
+      "responseStatus": 200,
+      "responseResult": "0000",
+      "requestSchemaHash": "265cb541ed8b7531dde35cf9737e1323fc52841348e5cf4ad676d42075078a1f",
+      "responseSchemaHash": "eba25f123ec2340bae005565769864f0b8f60fc3e5a0e874d94b54b123e7cd2c"
+    }
+  ]
+}

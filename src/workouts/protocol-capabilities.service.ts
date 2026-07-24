@@ -45,12 +45,15 @@ export class ProtocolCapabilitiesService {
               capture.responseResult === '0000',
           ),
       );
-    const create = has('run-simple-time', '/training/program/add');
+    const create =
+      has('run-simple-time', '/training/program/calculate') && has('run-simple-time', '/training/program/add');
     const list = has('run-simple-time', '/training/program/query');
     const remove = has('workout-delete', '/training/program/delete');
     const schedule = has('workout-schedule', '/training/schedule/update');
-    const bike = has('bike-time-power', '/training/program/add');
-    const swim = has('swim-distance-pace', '/training/program/add');
+    const bike =
+      has('bike-time-power', '/training/program/calculate') && has('bike-time-power', '/training/program/add');
+    const swim =
+      has('swim-distance-pace', '/training/program/calculate') && has('swim-distance-pace', '/training/program/add');
     return {
       createWorkout: create && list,
       updateWorkout: has('workout-update', '/training/program/add') && list,

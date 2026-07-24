@@ -1,5 +1,4 @@
 import type { z } from 'zod';
-import { redactAccessToken } from '../core/redact-access-token';
 import { ValidationError } from '../core/validation-error';
 import { CorosResponseBase, type CorosResponseWithData } from './common';
 
@@ -11,7 +10,7 @@ export abstract class BaseRequest<Input, Response extends CorosResponseWithData,
   public async run(args: Input): Promise<Output> {
     const parseResult = this.inputValidator().safeParse(args);
     if (!parseResult.success) {
-      throw new ValidationError(parseResult.error, { cause: args });
+      throw new ValidationError(parseResult.error);
     }
     return await this.handle(parseResult.data);
   }
@@ -20,7 +19,7 @@ export abstract class BaseRequest<Input, Response extends CorosResponseWithData,
     const parseResult = CorosResponseBase.safeParse(data);
     if (!parseResult.success) {
       throw new ValidationError(parseResult.error, {
-        cause: redactAccessToken(data),
+        cause: this.responseShape(data),
       });
     }
 
@@ -34,8 +33,28 @@ export abstract class BaseRequest<Input, Response extends CorosResponseWithData,
     const parseResult = this.responseValidator().safeParse(data);
     if (!parseResult.success) {
       throw new ValidationError(parseResult.error, {
-        cause: redactAccessToken(data),
+        cause: this.responseShape(data),
       });
     }
+  }
+
+  private responseShape(data: unknown): Record<string, unknown> {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+      return { responseType: data === null ? 'null' : typeof data };
+    }
+    const envelope = data as Record<string, unknown>;
+    const payload = envelope.data;
+    return {
+      envelopeKeys: Object.keys(envelope).sort(),
+      dataType: Array.isArray(payload) ? 'array' : payload === null ? 'null' : typeof payload,
+      dataKeys:
+        payload && typeof payload === 'object' && !Array.isArray(payload)
+          ? Object.keys(payload as Record<string, unknown>)
+              .map((key) =>
+                /(authorization|cookie|token|secret|password|pwd|csrf|email|yfheader)/i.test(key) ? '<redacted>' : key,
+              )
+              .sort()
+          : undefined,
+    };
   }
 }

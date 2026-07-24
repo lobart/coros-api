@@ -48,8 +48,8 @@ export const TrainingScheduleProgram = z.object({
 export type TrainingScheduleProgram = z.infer<typeof TrainingScheduleProgram>;
 
 export const QueryTrainingScheduleData = z.object({
-  entities: z.array(TrainingScheduleEntity),
-  programs: z.array(TrainingScheduleProgram),
+  entities: z.array(TrainingScheduleEntity).default([]),
+  programs: z.array(TrainingScheduleProgram).default([]),
 });
 export type QueryTrainingScheduleData = z.infer<typeof QueryTrainingScheduleData>;
 
@@ -107,11 +107,11 @@ export class QueryTrainingScheduleRequest extends BaseRequest<
       headers,
     });
 
-    this.logger.verbose('Query training schedule response', data);
+    this.logger.verbose('COROS training schedule response received.');
 
     this.assertCorosResponseBase(data);
     this.assertCorosResponse(data);
 
-    return data.data;
+    return QueryTrainingScheduleResponse.parse(data).data;
   }
 }

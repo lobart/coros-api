@@ -78,4 +78,37 @@ describe('CorosWorkoutClient', () => {
     );
     expect(request).toHaveBeenCalledTimes(1);
   });
+
+  it('classifies the provider result 1019 as an expired session', async () => {
+    const request = vi.fn().mockResolvedValue({
+      status: 200,
+      headers: { 'content-type': 'application/json;charset=UTF-8' },
+      data: { message: 'Authorization expired', result: '1019', tlogId: 'safe-test-id' },
+    });
+    const sessions: CorosSessionStore = {
+      save: vi.fn(),
+      delete: vi.fn(),
+      list: vi.fn(),
+      load: vi.fn(async () => ({
+        accountId: 'a',
+        region: 'eu' as const,
+        accountUserId: 'user-a',
+        accessToken: 'token-a',
+        createdAt: '2026-07-24T00:00:00.000Z',
+        validatedAt: '2026-07-24T00:00:00.000Z',
+        protocolVersion: 'test',
+      })),
+    };
+    const client = new CorosWorkoutClient(
+      { axiosRef: { request } } as unknown as HttpService,
+      new CorosConfigService(),
+      new AccountLockService(),
+      sessions,
+    );
+
+    await expect(client.request('a', 'POST', '/training/program/query', { body: {} })).rejects.toMatchObject({
+      code: 'COROS_AUTH_EXPIRED',
+      requiresUserInteraction: true,
+    });
+  });
 });

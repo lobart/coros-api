@@ -1,0 +1,19 @@
+{
+  "protocolVersion": "training-hub-web-v1",
+  "observedAt": "2026-07-24T06:32:49.951Z",
+  "region": "eu",
+  "verifiedOutcome": true,
+  "source": "live disposable research workout; create/read/delete verified and cleaned",
+  "fixtureId": "live-20260724-workout-delete",
+  "scenario": "workout-delete",
+  "captures": [
+    {
+      "method": "POST",
+      "url": "https://teameuapi.coros.com/training/program/delete",
+      "responseStatus": 200,
+      "responseResult": "0000",
+      "requestSchemaHash": "fbf8ccb36dfffb27ab6a79b3aa81fcbefcbcaaae65ed73e864b60c227f728c0a",
+      "responseSchemaHash": "b5c0edc358bb2f03b0b379f96a21c0c6cec4855af7563950489d9e93cc8f6dab"
+    }
+  ]
+}

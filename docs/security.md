@@ -36,9 +36,9 @@ Writes require all applicable controls:
 5. For update, delete, and schedule, a local mapping proving that this
    application created the workout.
 
-The current checked-in fixtures enable no public workout-library CRUD or
-schedule capability. The schedule-only operator fixture is insufficient because
-the verified workout-library query is absent.
+The current EU fixtures enable only the explicitly verified workout shapes.
+Update and all other unverified dimensions remain unavailable even when the
+write flag is enabled.
 
 Writes are serialized per account. Ambiguous failed writes are not retried.
 Create supports idempotency keys and rejects key reuse with changed content.

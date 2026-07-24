@@ -94,6 +94,16 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
           return await this.getWorkout(accountId, existing.workoutId);
         }
         const program = this.mapper.toProgram(workout);
+        const calculation = await this.client.request<Record<string, unknown>>(
+          accountId,
+          'POST',
+          '/training/program/calculate',
+          {
+            body: program,
+            lock: false,
+          },
+        );
+        this.applyCalculation(program, calculation);
         await this.mappings.save({
           accountId,
           idempotencyKey: resolvedKey,
@@ -140,6 +150,16 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
       return await this.locks.runExclusive(accountId, async () => {
         await this.requireManaged(accountId, workoutId);
         const program = { ...this.mapper.toProgram(workout), id: workoutId };
+        const calculation = await this.client.request<Record<string, unknown>>(
+          accountId,
+          'POST',
+          '/training/program/calculate',
+          {
+            body: program,
+            lock: false,
+          },
+        );
+        this.applyCalculation(program, calculation);
         await this.client.request(accountId, 'POST', '/training/program/add', {
           body: program,
           write: true,

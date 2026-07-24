@@ -14,11 +14,18 @@ The HTTP service listens on `127.0.0.1` and exposes account-scoped routes under:
 Every route requires `Authorization: Bearer <COROS_SERVICE_TOKEN>`. The
 `accountId` is an application-owned alias, not a COROS user ID.
 
-The checked-in fixture set does not currently enable workout-library CRUD.
-`createWorkout`, `updateWorkout`, and `deleteWorkout` remain `false` until this
-fork has its own verified, sanitized fixtures for those operations. The one
-operator fixture confirms a schedule write, but `scheduleWorkout` also requires
-a verified workout-library query fixture and therefore remains `false`.
+The checked-in EU fixtures enable the verified subset:
+
+- create/list/get for simple time-based running workouts;
+- simple indoor/road cycling workouts with power targets;
+- running repeat blocks with heart-rate targets;
+- deletion of externally managed library workouts;
+- scheduling of externally managed workouts.
+
+Update, unschedule, training plans, nested repeats, open steps, pace targets,
+cadence targets and swimming remain unavailable. A live update attempt created
+a second provider entity instead of updating the original, so update stays
+fail-closed.
 
 Use `GET .../capabilities` as the runtime source of truth. Do not infer support
 from implemented code or from the presence of a Bruno request.
@@ -36,17 +43,16 @@ from implemented code or from the presence of a Bruno request.
 | `DELETE` | `/workouts/{workoutId}` | Delete an externally managed workout | Write flag and `deleteWorkout` |
 | `POST` | `/workouts/{workoutId}/schedule` | Schedule an externally managed workout | Write flag and `scheduleWorkout` |
 
-Although list and get are reads, the current implementation gates them on
-`createWorkout` because the verified create contract must include
-`/training/program/query`.
+List and get are gated on the verified library query contract.
 
 ## Capability Rules
 
 Capabilities are calculated independently for each COROS region from sanitized
 fixtures whose `verifiedOutcome` is `true`.
 
-- Create requires successful `run-simple-time` captures for both
-  `/training/program/add` and `/training/program/query`.
+- Create requires successful `run-simple-time` captures for
+  `/training/program/calculate`, `/training/program/add` and
+  `/training/program/query`.
 - Update requires successful `workout-update` `/training/program/add` plus the
   verified library query.
 - Delete requires successful `workout-delete`
