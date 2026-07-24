@@ -16,10 +16,19 @@ import {
   type WorkoutStep,
   type WorkoutSummary,
 } from './domain/structured-workout';
+import {
+  type CorosWorkoutEstimate,
+  type WeekClipboard,
+  WeekCopyRequest,
+  WeekPasteRequest,
+  type WorkoutClipboard,
+  WorkoutEstimateRequest,
+  WorkoutPasteRequest,
+} from './domain/workout-transfer';
 import { CorosWorkoutMapper } from './mappers/coros-workout.mapper';
 import { ProtocolCapabilitiesService } from './protocol-capabilities.service';
 import { WorkoutAuditService } from './workout-audit.service';
-import { WorkoutMappingStore } from './workout-mapping.store';
+import { type WorkoutMapping, WorkoutMappingStore } from './workout-mapping.store';
 
 const ScheduleRequest = z.object({
   scheduled_date: z.iso.date(),
@@ -54,6 +63,10 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
   }
 
   async getWorkout(accountId: string, workoutId: string): Promise<StructuredWorkout> {
+    return await this.getWorkoutUnlocked(accountId, workoutId);
+  }
+
+  private async getWorkoutUnlocked(accountId: string, workoutId: string): Promise<StructuredWorkout> {
     const rows = await this.rawWorkouts(accountId);
     const raw = rows.find((row) => String(row.id ?? '') === workoutId);
     if (!raw) throw new CorosIntegrationError(CorosErrorCode.workoutNotFound, 'Тренировка COROS не найдена.');
@@ -76,100 +89,80 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
       });
     const startedAt = new Date().toISOString();
     try {
-      return await this.locks.runExclusive(accountId, async () => {
-        const existing = await this.mappings.find(accountId, resolvedKey);
-        if (existing) {
-          if (existing.contentHash !== contentHash) {
-            throw new CorosIntegrationError(
-              CorosErrorCode.duplicateExternalWorkout,
-              'Idempotency-Key уже использован с другим содержимым.',
-            );
-          }
-          if (existing.state === 'pending') {
-            throw new CorosIntegrationError(
-              CorosErrorCode.sessionConflict,
-              'Предыдущий create имеет неопределённый результат и требует reconciliation.',
-            );
-          }
-          return await this.getWorkout(accountId, existing.workoutId);
-        }
-        const program = this.mapper.toProgram(workout);
-        const calculation = await this.client.request<Record<string, unknown>>(
-          accountId,
-          'POST',
-          '/training/program/calculate',
-          {
-            body: program,
-            lock: false,
-          },
-        );
-        this.applyCalculation(program, calculation);
-        await this.mappings.save({
-          accountId,
-          idempotencyKey: resolvedKey,
-          externalSource: workout.externalSource ?? 'external',
-          externalWorkoutId: workout.externalWorkoutId ?? resolvedKey,
-          workoutId: `pending:${resolvedKey}`,
-          contentHash,
-          managedBy: 'external',
-          state: 'pending',
-        });
-        const data = await this.client.request<unknown>(accountId, 'POST', '/training/program/add', {
-          body: program,
-          write: true,
-          lock: false,
-        });
-        const workoutId = this.providerId(data);
-        await this.mappings.save({
-          accountId,
-          idempotencyKey: resolvedKey,
-          externalSource: workout.externalSource ?? 'external',
-          externalWorkoutId: workout.externalWorkoutId ?? resolvedKey,
-          workoutId,
-          contentHash,
-          managedBy: 'external',
-          state: 'confirmed',
-        });
-        await this.auditSuccess('create', accountId, startedAt, workoutId, contentHash, workout.externalWorkoutId);
-        return { ...workout, id: workoutId, managedBy: 'external' };
-      });
+      const created = await this.locks.runExclusive(
+        accountId,
+        async () => await this.createLocked(accountId, workout, resolvedKey, contentHash),
+      );
+      await this.auditSuccess('create', accountId, startedAt, created.id, contentHash, workout.externalWorkoutId);
+      return created;
     } catch (error) {
       await this.auditFailure('create', accountId, startedAt, contentHash, error);
       throw error;
     }
   }
 
-  async updateWorkout(accountId: string, workoutId: string, input: unknown): Promise<StructuredWorkout> {
+  async updateWorkout(accountId: string, _workoutId: string, _input: unknown): Promise<StructuredWorkout> {
+    await this.requireCapability(accountId, 'updateWorkout');
+    throw new CorosIntegrationError(
+      CorosErrorCode.capabilityUnavailable,
+      'COROS in-place update не подтверждён протоколом. Используйте replacement endpoint.',
+    );
+  }
+
+  async replaceWorkout(accountId: string, workoutId: string, input: unknown): Promise<StructuredWorkout> {
     this.ensureWriteEnabled();
-    const capabilities = await this.requireCapability(accountId, 'updateWorkout');
+    const capabilities = await this.requireCapability(accountId, 'replaceWorkout');
     const workout = this.parseUpdate(input);
     this.ensureWorkoutCapabilities(workout, capabilities);
-    const fingerprint = this.hash(workout);
+    const contentHash = this.hash(workout);
     const startedAt = new Date().toISOString();
+    let replacementId: string | undefined;
     try {
       return await this.locks.runExclusive(accountId, async () => {
-        await this.requireManaged(accountId, workoutId);
-        const program = { ...this.mapper.toProgram(workout), id: workoutId };
-        const calculation = await this.client.request<Record<string, unknown>>(
-          accountId,
-          'POST',
-          '/training/program/calculate',
-          {
-            body: program,
-            lock: false,
-          },
-        );
-        this.applyCalculation(program, calculation);
-        await this.client.request(accountId, 'POST', '/training/program/add', {
-          body: program,
-          write: true,
-          lock: false,
+        const previous = await this.requireManagedMapping(accountId, workoutId);
+        if (previous.scheduledDate) {
+          throw new CorosIntegrationError(
+            CorosErrorCode.capabilityUnavailable,
+            'Замена назначенной тренировки недоступна без подтверждённого unschedule. Скопируйте и вставьте новую.',
+          );
+        }
+        const replacement = {
+          ...workout,
+          externalSource: previous.externalSource,
+          externalWorkoutId: previous.externalWorkoutId,
+        };
+        const replacementKey = `replace:${previous.idempotencyKey}:${contentHash}`;
+        const created = await this.createLocked(accountId, replacement, replacementKey, contentHash);
+        replacementId = created.id;
+        const replacementMapping = await this.mappings.findByWorkout(accountId, created.id);
+        if (!replacementMapping) {
+          throw new CorosIntegrationError(
+            CorosErrorCode.sessionConflict,
+            'Не удалось закрепить mapping обновлённой тренировки.',
+          );
+        }
+        await this.mappings.replace(accountId, workoutId, {
+          ...replacementMapping,
+          idempotencyKey: previous.idempotencyKey,
         });
-        await this.auditSuccess('update', accountId, startedAt, workoutId, fingerprint, undefined);
-        return { ...workout, id: workoutId, managedBy: 'external' };
+        try {
+          await this.client.request(accountId, 'POST', '/training/program/delete', {
+            body: [workoutId],
+            write: true,
+            lock: false,
+          });
+        } catch (error) {
+          await this.mappings.replace(accountId, created.id, {
+            ...previous,
+          });
+          throw error;
+        }
+        await this.auditSuccess('replace', accountId, startedAt, created.id, contentHash, previous.externalWorkoutId);
+        return { ...created, replacesWorkoutId: workoutId };
       });
     } catch (error) {
-      await this.auditFailure('update', accountId, startedAt, fingerprint, error, workoutId);
+      if (replacementId) await this.cleanupReplacement(accountId, replacementId);
+      await this.auditFailure('replace', accountId, startedAt, contentHash, error, workoutId);
       throw error;
     }
   }
@@ -218,6 +211,185 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
       await this.auditFailure('schedule', accountId, startedAt, fingerprint, error, workoutId);
       throw error;
     }
+  }
+
+  async copyWorkout(accountId: string, workoutId: string): Promise<WorkoutClipboard> {
+    await this.requireCapability(accountId, 'copyWorkout');
+    const mapping = await this.requireManagedMapping(accountId, workoutId);
+    if (!mapping.workoutSnapshot) {
+      throw new CorosIntegrationError(
+        CorosErrorCode.capabilityUnavailable,
+        'Точная структура старой тренировки недоступна для безопасного копирования.',
+      );
+    }
+    const workout = mapping.workoutSnapshot;
+    return {
+      version: 1,
+      copy_id: this.hash({ accountId, workoutId, workout, copiedAt: new Date().toISOString() }),
+      source_workout_id: workoutId,
+      workout,
+      copied_at: new Date().toISOString(),
+    };
+  }
+
+  async pasteWorkout(accountId: string, input: unknown, idempotencyKey?: string): Promise<StructuredWorkout> {
+    const request = this.parseTransfer(WorkoutPasteRequest, input, 'Буфер тренировки не прошёл валидацию.');
+    const workout = {
+      ...request.clipboard.workout,
+      name: request.name ?? request.clipboard.workout.name,
+      externalSource: request.external_source,
+      externalWorkoutId:
+        request.external_workout_id ?? `copy:${request.clipboard.copy_id}:${request.clipboard.source_workout_id}`,
+    };
+    const created = await this.createWorkout(
+      accountId,
+      workout,
+      idempotencyKey ??
+        `paste:${request.clipboard.copy_id}:${request.external_workout_id ?? workout.name}:${request.scheduled_date ?? 'library'}`,
+    );
+    if (request.scheduled_date) {
+      if (!request.timezone) {
+        throw new CorosIntegrationError(
+          CorosErrorCode.validationFailed,
+          'timezone обязательна при вставке тренировки в календарь.',
+        );
+      }
+      await this.scheduleWorkout(accountId, created.id, {
+        scheduled_date: request.scheduled_date,
+        timezone: request.timezone,
+      });
+    }
+    return created;
+  }
+
+  async copyWeek(accountId: string, input: unknown): Promise<WeekClipboard> {
+    await this.requireCapability(accountId, 'copyWeek');
+    const request = this.parseTransfer(WeekCopyRequest, input, 'Параметры копирования недели некорректны.');
+    this.assertTimezone(request.timezone);
+    const end = this.addDays(request.source_week_start, 6);
+    const mappings = await this.mappings.listScheduled(accountId, request.source_week_start, end);
+    const sessions = mappings.map((mapping) => {
+      if (!mapping.scheduledDate || !mapping.workoutSnapshot) {
+        throw new CorosIntegrationError(
+          CorosErrorCode.capabilityUnavailable,
+          'Неделя содержит тренировку без точного локального snapshot.',
+        );
+      }
+      return {
+        day_offset: this.daysBetween(request.source_week_start, mapping.scheduledDate),
+        source_date: mapping.scheduledDate,
+        source_workout_id: mapping.workoutId,
+        workout: mapping.workoutSnapshot,
+      };
+    });
+    const copiedAt = new Date().toISOString();
+    return {
+      version: 1,
+      copy_id: this.hash({ accountId, source: request.source_week_start, sessions, copiedAt }),
+      source_week_start: request.source_week_start,
+      timezone: request.timezone,
+      sessions,
+      copied_at: copiedAt,
+    };
+  }
+
+  async pasteWeek(accountId: string, input: unknown): Promise<Record<string, unknown>> {
+    this.ensureWriteEnabled();
+    await this.requireCapability(accountId, 'copyWeek');
+    const request = this.parseTransfer(WeekPasteRequest, input, 'Буфер недели или целевая дата некорректны.');
+    this.assertTimezone(request.timezone);
+    const targetEnd = this.addDays(request.target_week_start, 6);
+    const occupied = new Set([
+      ...this.scheduleDates(await this.queryScheduleRange(accountId, request.target_week_start, targetEnd)),
+      ...(await this.mappings.listScheduled(accountId, request.target_week_start, targetEnd))
+        .map((item) => item.scheduledDate)
+        .filter((date): date is string => Boolean(date)),
+    ]);
+    const results: Record<string, unknown>[] = [];
+    for (const session of request.clipboard.sessions) {
+      const scheduledDate = this.addDays(request.target_week_start, session.day_offset);
+      if (request.conflict_policy === 'skip_occupied_dates' && occupied.has(scheduledDate)) {
+        results.push({
+          source_workout_id: session.source_workout_id,
+          scheduled_date: scheduledDate,
+          status: 'skipped',
+        });
+        continue;
+      }
+      try {
+        const created = await this.createWorkout(
+          accountId,
+          {
+            ...session.workout,
+            externalSource: 'week_copy',
+            externalWorkoutId: `${request.clipboard.copy_id}:${session.day_offset}:${scheduledDate}`,
+          },
+          `week-paste:${request.clipboard.copy_id}:${session.day_offset}:${scheduledDate}`,
+        );
+        await this.scheduleWorkout(accountId, created.id, {
+          scheduled_date: scheduledDate,
+          timezone: request.timezone,
+        });
+        results.push({
+          source_workout_id: session.source_workout_id,
+          workout_id: created.id,
+          scheduled_date: scheduledDate,
+          status: 'scheduled',
+        });
+      } catch (error) {
+        results.push({
+          source_workout_id: session.source_workout_id,
+          scheduled_date: scheduledDate,
+          status: 'failed',
+          error_code: error instanceof CorosIntegrationError ? error.code : CorosErrorCode.scheduleFailed,
+        });
+      }
+    }
+    const failed = results.filter((item) => item.status === 'failed').length;
+    const skipped = results.filter((item) => item.status === 'skipped').length;
+    return {
+      status: failed ? 'partial' : 'completed',
+      scheduled: results.length - failed - skipped,
+      skipped,
+      failed,
+      sessions: results,
+    };
+  }
+
+  async estimateWorkout(accountId: string, input: unknown): Promise<CorosWorkoutEstimate> {
+    const capabilities = await this.requireCapability(accountId, 'estimateWorkout');
+    const request = this.parseTransfer(WorkoutEstimateRequest, input, 'Запрос оценки тренировки некорректен.');
+    this.ensureWorkoutCapabilities(request.workout, capabilities);
+    if (
+      request.requested_metric === 'duration' &&
+      request.workout.steps.some((step) => step.durationType !== 'distance' && step.kind !== 'repeat')
+    ) {
+      throw new CorosIntegrationError(
+        CorosErrorCode.validationFailed,
+        'Оценка длительности требует тренировки, заданной расстоянием.',
+      );
+    }
+    const program = this.mapper.toProgram(request.workout);
+    const estimate = await this.client.request<Record<string, unknown>>(
+      accountId,
+      'POST',
+      '/training/program/calculate',
+      { body: program },
+    );
+    return this.normalizeEstimate(estimate, request.requested_metric);
+  }
+
+  async getWorkoutLoad(accountId: string, workoutId: string): Promise<CorosWorkoutEstimate> {
+    await this.requireCapability(accountId, 'trainingLoad');
+    const raw = (await this.rawWorkouts(accountId)).find((row) => String(row.id ?? '') === workoutId);
+    if (!raw) throw new CorosIntegrationError(CorosErrorCode.workoutNotFound, 'Тренировка COROS не найдена.');
+    const estimate = await this.client.request<Record<string, unknown>>(
+      accountId,
+      'POST',
+      '/training/program/calculate',
+      { body: raw },
+    );
+    return this.normalizeEstimate(estimate, 'both');
   }
 
   private async scheduleLocked(
@@ -278,6 +450,85 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
     };
   }
 
+  private async createLocked(
+    accountId: string,
+    workout: z.infer<typeof StructuredWorkoutCreate>,
+    idempotencyKey: string,
+    contentHash: string,
+  ): Promise<StructuredWorkout> {
+    const existing = await this.mappings.find(accountId, idempotencyKey);
+    if (existing) {
+      if (existing.contentHash !== contentHash) {
+        throw new CorosIntegrationError(
+          CorosErrorCode.duplicateExternalWorkout,
+          'Idempotency-Key уже использован с другим содержимым.',
+        );
+      }
+      if (existing.state === 'pending') {
+        throw new CorosIntegrationError(
+          CorosErrorCode.sessionConflict,
+          'Предыдущий create имеет неопределённый результат и требует reconciliation.',
+        );
+      }
+      return await this.getWorkoutUnlocked(accountId, existing.workoutId);
+    }
+    const program = this.mapper.toProgram(workout);
+    const calculation = await this.client.request<Record<string, unknown>>(
+      accountId,
+      'POST',
+      '/training/program/calculate',
+      { body: program, lock: false },
+    );
+    this.applyCalculation(program, calculation);
+    await this.mappings.save({
+      accountId,
+      idempotencyKey,
+      externalSource: workout.externalSource ?? 'external',
+      externalWorkoutId: workout.externalWorkoutId ?? idempotencyKey,
+      workoutId: `pending:${idempotencyKey}`,
+      contentHash,
+      managedBy: 'external',
+      state: 'pending',
+      workoutSnapshot: workout,
+    });
+    const data = await this.client.request<unknown>(accountId, 'POST', '/training/program/add', {
+      body: program,
+      write: true,
+      lock: false,
+    });
+    const workoutId = this.providerId(data);
+    await this.mappings.save({
+      accountId,
+      idempotencyKey,
+      externalSource: workout.externalSource ?? 'external',
+      externalWorkoutId: workout.externalWorkoutId ?? idempotencyKey,
+      workoutId,
+      contentHash,
+      managedBy: 'external',
+      state: 'confirmed',
+      workoutSnapshot: workout,
+    });
+    return {
+      ...workout,
+      id: workoutId,
+      managedBy: 'external',
+      estimatedDurationSeconds: this.numberOrNull(program.estimatedTime ?? program.duration),
+      estimatedDistanceMeters: this.distanceMeters(program.distance),
+      trainingLoad: this.numberOrNull(program.trainingLoad),
+    };
+  }
+
+  private async cleanupReplacement(accountId: string, workoutId: string): Promise<void> {
+    try {
+      await this.client.request(accountId, 'POST', '/training/program/delete', {
+        body: [workoutId],
+        write: true,
+        lock: false,
+      });
+      await this.mappings.delete(accountId, workoutId);
+    } catch {}
+  }
+
   private parseCreate(input: unknown) {
     try {
       return StructuredWorkoutCreate.parse(input);
@@ -326,6 +577,14 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
     }
   }
 
+  private parseTransfer<T>(schema: z.ZodType<T>, input: unknown, message: string): T {
+    try {
+      return schema.parse(input);
+    } catch (error) {
+      throw new CorosIntegrationError(CorosErrorCode.validationFailed, message, false, false, { cause: error });
+    }
+  }
+
   private async rawWorkouts(accountId: string): Promise<Record<string, unknown>[]> {
     await this.requireCapability(accountId, 'createWorkout');
     return await this.client.request<Record<string, unknown>[]>(accountId, 'POST', '/training/program/query', {
@@ -336,6 +595,16 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
   private async querySchedule(accountId: string, compactDate: string): Promise<Record<string, unknown>> {
     return await this.client.request(accountId, 'GET', '/training/schedule/query', {
       query: { startDate: compactDate, endDate: compactDate, supportRestExercise: 1 },
+    });
+  }
+
+  private async queryScheduleRange(accountId: string, startDate: string, endDate: string) {
+    return await this.client.request<Record<string, unknown>>(accountId, 'GET', '/training/schedule/query', {
+      query: {
+        startDate: startDate.replaceAll('-', ''),
+        endDate: endDate.replaceAll('-', ''),
+        supportRestExercise: 1,
+      },
     });
   }
 
@@ -373,6 +642,10 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
   }
 
   private async requireManaged(accountId: string, workoutId: string): Promise<void> {
+    await this.requireManagedMapping(accountId, workoutId);
+  }
+
+  private async requireManagedMapping(accountId: string, workoutId: string): Promise<WorkoutMapping> {
     const mapping = await this.mappings.findByWorkout(accountId, workoutId);
     if (mapping?.state !== 'confirmed') {
       throw new CorosIntegrationError(
@@ -380,6 +653,7 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
         'Операция разрешена только для тренировок, созданных внешним приложением.',
       );
     }
+    return mapping;
   }
 
   private ensureWorkoutCapabilities(
@@ -431,6 +705,8 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
       name: String(raw.name ?? 'COROS workout'),
       sport: this.sport(raw.sportType),
       estimatedDurationSeconds: this.numberOrNull(raw.estimatedTime ?? raw.duration),
+      estimatedDistanceMeters: this.distanceMeters(raw.distance),
+      trainingLoad: this.numberOrNull(raw.trainingLoad ?? raw.planTrainingLoad),
       managedBy: mapping ? 'external' : 'coros',
     };
   }
@@ -458,6 +734,9 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
       description: typeof raw.overview === 'string' ? raw.overview : undefined,
       steps,
       managedBy: summary.managedBy,
+      estimatedDurationSeconds: summary.estimatedDurationSeconds,
+      estimatedDistanceMeters: summary.estimatedDistanceMeters,
+      trainingLoad: summary.trainingLoad,
     };
   }
 
@@ -525,8 +804,80 @@ export class CorosWorkoutService implements CorosWorkoutAdapter {
   }
 
   private numberOrNull(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') return null;
     const number = Number(value);
     return Number.isFinite(number) ? number : null;
+  }
+
+  private distanceMeters(value: unknown): number | null {
+    const centimeters = this.numberOrNull(value);
+    return centimeters === null ? null : centimeters / 100;
+  }
+
+  private normalizeEstimate(
+    data: Record<string, unknown>,
+    requestedMetric: CorosWorkoutEstimate['requestedMetric'],
+  ): CorosWorkoutEstimate {
+    const daily = data.currentDaySum;
+    const currentDay =
+      daily && typeof daily === 'object' && !Array.isArray(daily) ? (daily as Record<string, unknown>) : null;
+    return {
+      requestedMetric,
+      durationSeconds: this.numberOrNull(data.planDuration ?? data.duration),
+      distanceMeters: this.distanceMeters(data.planDistance ?? data.distance),
+      trainingLoad: this.numberOrNull(data.planTrainingLoad ?? data.trainingLoad),
+      sets: this.numberOrNull(data.planSets ?? data.sets),
+      pitch: this.numberOrNull(data.planPitch ?? data.pitch),
+      elevationGainMeters: this.numberOrNull(data.planElevGain ?? data.actualElevGain),
+      dailyLoad: currentDay
+        ? {
+            acuteTrainingLoad: this.numberOrNull(currentDay.planAti),
+            chronicTrainingLoad: this.numberOrNull(currentDay.planCti),
+            tiredRate: this.numberOrNull(currentDay.planTiredRate),
+            tiredRateNew: this.numberOrNull(currentDay.planTiredRateNew),
+            trainingLoad: this.numberOrNull(currentDay.planTrainingLoad),
+          }
+        : null,
+    };
+  }
+
+  private assertTimezone(timezone: string): void {
+    try {
+      new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format(new Date());
+    } catch {
+      throw new CorosIntegrationError(CorosErrorCode.validationFailed, 'Некорректная timezone.');
+    }
+  }
+
+  private addDays(value: string, days: number): string {
+    const date = new Date(`${value}T00:00:00.000Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+
+  private daysBetween(start: string, end: string): number {
+    return Math.round(
+      (new Date(`${end}T00:00:00.000Z`).getTime() - new Date(`${start}T00:00:00.000Z`).getTime()) / 86_400_000,
+    );
+  }
+
+  private scheduleDates(schedule: Record<string, unknown>): string[] {
+    const dates = new Set<string>();
+    const pending: unknown[] = [schedule];
+    while (pending.length) {
+      const value = pending.pop();
+      if (Array.isArray(value)) {
+        pending.push(...value);
+      } else if (value && typeof value === 'object') {
+        const row = value as Record<string, unknown>;
+        const raw = row.happenDay;
+        if (typeof raw === 'string' && /^\d{8}$/.test(raw)) {
+          dates.add(`${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`);
+        }
+        pending.push(...Object.values(row));
+      }
+    }
+    return [...dates];
   }
 
   private positiveNumber(value: unknown): number | undefined {

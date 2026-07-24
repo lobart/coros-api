@@ -107,6 +107,10 @@ export type StructuredWorkoutUpdate = z.infer<typeof StructuredWorkoutUpdate>;
 export type StructuredWorkout = StructuredWorkoutCreate & {
   id: string;
   managedBy: 'external' | 'coros';
+  replacesWorkoutId?: string;
+  estimatedDurationSeconds?: number | null;
+  estimatedDistanceMeters?: number | null;
+  trainingLoad?: number | null;
 };
 
 export type WorkoutSummary = {
@@ -114,6 +118,8 @@ export type WorkoutSummary = {
   name: string;
   sport: WorkoutSport;
   estimatedDurationSeconds: number | null;
+  estimatedDistanceMeters: number | null;
+  trainingLoad: number | null;
   managedBy: 'external' | 'coros';
 };
 

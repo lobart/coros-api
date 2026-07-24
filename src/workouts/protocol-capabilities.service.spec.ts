@@ -8,6 +8,11 @@ describe('ProtocolCapabilitiesService', () => {
     const capabilities = await new ProtocolCapabilitiesService(new CorosConfigService()).forRegion('eu');
     expect(capabilities.createWorkout).toBe(true);
     expect(capabilities.updateWorkout).toBe(false);
+    expect(capabilities.replaceWorkout).toBe(true);
+    expect(capabilities.copyWorkout).toBe(true);
+    expect(capabilities.copyWeek).toBe(true);
+    expect(capabilities.estimateWorkout).toBe(true);
+    expect(capabilities.trainingLoad).toBe(true);
     expect(capabilities.deleteWorkout).toBe(true);
     expect(capabilities.scheduleWorkout).toBe(true);
     expect(capabilities.repeatBlocks).toBe(true);

@@ -1,0 +1,35 @@
+meta {
+  name: Replace Workout
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts/{{WORKOUT_ID}}/replacements
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+body:json {
+  {
+    "sport": "run",
+    "name": "Replacement workout",
+    "steps": [
+      {
+        "kind": "work",
+        "durationType": "time",
+        "durationValue": 1800,
+        "target": { "type": "heart_rate", "min": 130, "max": 145 }
+      }
+    ]
+  }
+}
+
+docs {
+  Explicitly replaces an unscheduled externally managed workout. The response
+  contains a new COROS ID and replacesWorkoutId. This is not in-place update.
+}

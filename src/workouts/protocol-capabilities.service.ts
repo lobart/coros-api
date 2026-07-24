@@ -57,6 +57,11 @@ export class ProtocolCapabilitiesService {
     return {
       createWorkout: create && list,
       updateWorkout: has('workout-update', '/training/program/add') && list,
+      replaceWorkout: create && list && remove,
+      copyWorkout: create && list,
+      copyWeek: create && list && schedule,
+      estimateWorkout: create,
+      trainingLoad: create,
       deleteWorkout: remove,
       scheduleWorkout: schedule && list,
       unscheduleWorkout: has('workout-delete', '/training/schedule/update'),

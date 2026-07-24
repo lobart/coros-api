@@ -1,0 +1,20 @@
+meta {
+  name: Get Workout Load
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts/{{WORKOUT_ID}}/load
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+docs {
+  Recalculates normalized duration, distance and planned COROS load for a
+  workout-library item.
+}

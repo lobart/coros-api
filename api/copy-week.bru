@@ -1,0 +1,27 @@
+meta {
+  name: Copy Week
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/weeks/copy
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+body:json {
+  {
+    "source_week_start": "2026-07-27",
+    "timezone": "Europe/Moscow"
+  }
+}
+
+docs {
+  Returns a week clipboard for locally managed scheduled workouts. The source
+  date must be Monday.
+}

@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { CorosConfigService } from '../coros/coros.config';
+import { StructuredWorkoutCreate } from './domain/structured-workout';
 
 const Mapping = z.object({
   accountHash: z.string(),
@@ -19,6 +20,7 @@ const Mapping = z.object({
   idInPlan: z.string().optional(),
   planId: z.string().optional(),
   planProgramId: z.string().optional(),
+  workoutSnapshot: StructuredWorkoutCreate.optional(),
 });
 export type WorkoutMapping = z.infer<typeof Mapping>;
 const Mappings = z.array(Mapping);
@@ -55,12 +57,57 @@ export class WorkoutMappingStore {
         managedBy: 'external',
         state: mapping.state,
         createdAt: new Date().toISOString(),
+        scheduledDate: mapping.scheduledDate,
+        idInPlan: mapping.idInPlan,
+        planId: mapping.planId,
+        planProgramId: mapping.planProgramId,
+        workoutSnapshot: mapping.workoutSnapshot,
       };
       const filtered = rows.filter(
         (item) => !(item.accountHash === row.accountHash && item.idempotencyKey === row.idempotencyKey),
       );
       filtered.push(row);
       await this.write(filtered);
+    });
+  }
+
+  async listScheduled(accountId: string, startDate: string, endDate: string): Promise<WorkoutMapping[]> {
+    const accountHash = this.accountHash(accountId);
+    return (await this.read())
+      .filter(
+        (item) =>
+          item.accountHash === accountHash &&
+          item.state === 'confirmed' &&
+          item.scheduledDate !== undefined &&
+          item.scheduledDate >= startDate &&
+          item.scheduledDate <= endDate,
+      )
+      .sort((left, right) => String(left.scheduledDate).localeCompare(String(right.scheduledDate)));
+  }
+
+  async replace(
+    accountId: string,
+    oldWorkoutId: string,
+    replacement: Omit<WorkoutMapping, 'accountHash' | 'createdAt'>,
+  ): Promise<void> {
+    await this.serial(async () => {
+      const accountHash = this.accountHash(accountId);
+      const rows = (await this.read()).filter(
+        (item) =>
+          !(
+            item.accountHash === accountHash &&
+            (item.workoutId === oldWorkoutId ||
+              item.workoutId === replacement.workoutId ||
+              item.idempotencyKey === replacement.idempotencyKey)
+          ),
+      );
+      rows.push({
+        ...replacement,
+        accountHash,
+        managedBy: 'external',
+        createdAt: new Date().toISOString(),
+      });
+      await this.write(rows);
     });
   }
 

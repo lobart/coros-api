@@ -36,6 +36,45 @@ export class WorkoutsController {
     return await this.workouts.updateWorkout(accountId, workoutId, body);
   }
 
+  @Post('workouts/:workoutId/replacements')
+  async replace(@Param('accountId') accountId: string, @Param('workoutId') workoutId: string, @Body() body: unknown) {
+    return await this.workouts.replaceWorkout(accountId, workoutId, body);
+  }
+
+  @Post('workouts/:workoutId/copy')
+  async copy(@Param('accountId') accountId: string, @Param('workoutId') workoutId: string) {
+    return await this.workouts.copyWorkout(accountId, workoutId);
+  }
+
+  @Post('workouts/paste')
+  async paste(
+    @Param('accountId') accountId: string,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    return await this.workouts.pasteWorkout(accountId, body, idempotencyKey);
+  }
+
+  @Post('weeks/copy')
+  async copyWeek(@Param('accountId') accountId: string, @Body() body: unknown) {
+    return await this.workouts.copyWeek(accountId, body);
+  }
+
+  @Post('weeks/paste')
+  async pasteWeek(@Param('accountId') accountId: string, @Body() body: unknown) {
+    return await this.workouts.pasteWeek(accountId, body);
+  }
+
+  @Post('workouts/estimate')
+  async estimate(@Param('accountId') accountId: string, @Body() body: unknown) {
+    return await this.workouts.estimateWorkout(accountId, body);
+  }
+
+  @Get('workouts/:workoutId/load')
+  async load(@Param('accountId') accountId: string, @Param('workoutId') workoutId: string) {
+    return await this.workouts.getWorkoutLoad(accountId, workoutId);
+  }
+
   @Delete('workouts/:workoutId')
   async delete(@Param('accountId') accountId: string, @Param('workoutId') workoutId: string) {
     await this.workouts.deleteWorkout(accountId, workoutId);

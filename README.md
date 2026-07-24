@@ -147,7 +147,9 @@ All `/api/v1/coros/...` requests require
 `Authorization: Bearer $COROS_SERVICE_TOKEN`. Write operations additionally
 require `COROS_WRITE_API_ENABLED=true` and a verified regional protocol fixture.
 See [Workout write API](docs/workout-write-api.md) and
-[Athlete authentication](docs/athlete-authentication.md).
+[Athlete authentication](docs/athlete-authentication.md). Copy/paste,
+replacement, week transfer and estimate/load contracts are documented in
+[Workout copy and estimation](docs/workout-copy-estimate.md).
 
 ## Licence
 

@@ -22,10 +22,11 @@ The checked-in EU fixtures enable the verified subset:
 - deletion of externally managed library workouts;
 - scheduling of externally managed workouts.
 
-Update, unschedule, training plans, nested repeats, open steps, pace targets,
+In-place update, unschedule, training plans, nested repeats, open steps, pace targets,
 cadence targets and swimming remain unavailable. A live update attempt created
 a second provider entity instead of updating the original, so update stays
-fail-closed.
+fail-closed. The wrapper exposes an explicit replacement operation for
+unscheduled externally managed workouts; it returns a new COROS workout ID.
 
 Use `GET .../capabilities` as the runtime source of truth. Do not infer support
 from implemented code or from the presence of a Bruno request.
@@ -39,7 +40,14 @@ from implemented code or from the presence of a Bruno request.
 | `GET` | `/workouts` | List workout-library summaries | `createWorkout` |
 | `GET` | `/workouts/{workoutId}` | Return a mapped structured workout | `createWorkout` |
 | `POST` | `/workouts` | Create a workout | Write flag and `createWorkout` |
-| `PUT` | `/workouts/{workoutId}` | Update an externally managed workout | Write flag and `updateWorkout` |
+| `PUT` | `/workouts/{workoutId}` | Reserved in-place update; currently fail-closed | `updateWorkout` |
+| `POST` | `/workouts/{workoutId}/replacements` | Replace an unscheduled managed workout and return a new ID | Write flag and `replaceWorkout` |
+| `POST` | `/workouts/{workoutId}/copy` | Copy an exact local workout snapshot | `copyWorkout` |
+| `POST` | `/workouts/paste` | Create and optionally schedule from a clipboard | Write flag and `copyWorkout` |
+| `POST` | `/weeks/copy` | Copy managed scheduled workouts from a week | `copyWeek` |
+| `POST` | `/weeks/paste` | Paste a week with per-session idempotency | Write flag and `copyWeek` |
+| `POST` | `/workouts/estimate` | Calculate duration, distance and planned load | `estimateWorkout` |
+| `GET` | `/workouts/{workoutId}/load` | Recalculate planned load | `trainingLoad` |
 | `DELETE` | `/workouts/{workoutId}` | Delete an externally managed workout | Write flag and `deleteWorkout` |
 | `POST` | `/workouts/{workoutId}/schedule` | Schedule an externally managed workout | Write flag and `scheduleWorkout` |
 
@@ -53,8 +61,12 @@ fixtures whose `verifiedOutcome` is `true`.
 - Create requires successful `run-simple-time` captures for
   `/training/program/calculate`, `/training/program/add` and
   `/training/program/query`.
-- Update requires successful `workout-update` `/training/program/add` plus the
+- In-place update requires successful `workout-update` `/training/program/add` plus the
   verified library query.
+- Replacement is composed only from verified create/query/delete operations.
+- Copy uses the canonical snapshot persisted before provider create.
+- Week copy/paste is composed from verified create and schedule operations.
+- Estimate/load use verified personal-account `/training/program/calculate`.
 - Delete requires successful `workout-delete`
   `/training/program/delete`.
 - Schedule requires successful `workout-schedule`
@@ -99,11 +111,12 @@ This is a validation model, not a statement of verified provider support.
 Current provider mapping accepts only time-based non-repeat steps and
 time-based children inside repeat groups. Target compatibility is validated by
 sport. At most 100 effective steps and two levels of repeat nesting are
-accepted.
+accepted. Distance-based provider mapping remains disabled until a sanitized
+distance fixture confirms its units and enums.
 
 When `expectedDurationSeconds` is present, it must exactly match the sum of
-time-based steps, including repeats. Update uses the same workout fields but
-does not accept `externalSource` or `externalWorkoutId`.
+time-based steps, including repeats. Replacement uses the same workout fields
+but does not accept `externalSource` or `externalWorkoutId`.
 
 Create accepts an optional `Idempotency-Key`. Reusing a key with identical
 content returns the mapped workout; reusing it with different content returns a
@@ -111,7 +124,24 @@ conflict. The key is reserved before the provider write. If the response is
 ambiguous, the reservation remains pending and another create is blocked until
 an operator reconciles provider state. Update, delete, and schedule are allowed
 only for confirmed workouts recorded in the local mapping store as externally
-managed.
+managed. Exact canonical snapshots are stored with new mappings so repeat
+groups and targets survive copy/paste without lossy provider readback.
+
+Replacement is deliberately separate from `PUT`. Use
+`POST /workouts/{workoutId}/replacements`; it creates a new provider object,
+deletes the old unscheduled managed workout, preserves external identity and
+returns `replacesWorkoutId`. Scheduled workouts are rejected until unschedule
+has reviewed fixture evidence and rollback semantics.
+
+Copy and paste are separate operations. Copy returns a versioned clipboard;
+paste consumes it and accepts an `Idempotency-Key`. Week copy stores offsets
+`0..6` from an ISO Monday. Week paste uses a deterministic child key for every
+session and returns `completed` or `partial`. `conflict_policy` is `append` or
+`skip_occupied_dates`.
+
+Estimate output normalizes COROS centimetres to metres and includes duration,
+distance, planned training load, sets, pitch/elevation and daily load fields
+when returned. Missing provider fields remain `null`.
 
 Sport, repeat shape, open steps and every target type are checked against
 separate fixture-backed capabilities. A confirmed simple running create never

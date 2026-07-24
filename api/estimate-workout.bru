@@ -1,0 +1,38 @@
+meta {
+  name: Estimate Workout
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts/estimate
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+body:json {
+  {
+    "requested_metric": "distance",
+    "workout": {
+      "sport": "run",
+      "name": "One hour aerobic",
+      "steps": [
+        {
+          "kind": "work",
+          "durationType": "time",
+          "durationValue": 3600,
+          "target": { "type": "heart_rate", "min": 130, "max": 145 }
+        }
+      ]
+    }
+  }
+}
+
+docs {
+  Returns normalized COROS calculate fields: seconds, metres and planned load.
+  Distance-defined duration estimation remains unavailable.
+}

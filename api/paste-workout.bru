@@ -1,0 +1,29 @@
+meta {
+  name: Paste Workout
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts/paste
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+  Idempotency-Key: paste-example-001
+}
+
+body:json {
+  {
+    "clipboard": {{WORKOUT_CLIPBOARD}},
+    "name": "Copied workout",
+    "external_source": "bruno-example"
+  }
+}
+
+docs {
+  Paste the complete JSON returned by Copy Workout into WORKOUT_CLIPBOARD.
+  scheduled_date and timezone may be added to create and schedule in one call.
+}

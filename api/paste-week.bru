@@ -1,0 +1,29 @@
+meta {
+  name: Paste Week
+  type: http
+  seq: 23
+}
+
+post {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/weeks/paste
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+body:json {
+  {
+    "clipboard": {{WEEK_CLIPBOARD}},
+    "target_week_start": "2026-08-03",
+    "timezone": "Europe/Moscow",
+    "conflict_policy": "skip_occupied_dates"
+  }
+}
+
+docs {
+  Paste the complete Copy Week response into WEEK_CLIPBOARD. Each session uses a
+  deterministic idempotency key and reports its own result.
+}

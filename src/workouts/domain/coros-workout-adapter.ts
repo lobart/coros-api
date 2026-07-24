@@ -5,6 +5,15 @@ import type {
   StructuredWorkoutUpdate,
   WorkoutSummary,
 } from './structured-workout';
+import type {
+  CorosWorkoutEstimate,
+  WeekClipboard,
+  WeekCopyRequest,
+  WeekPasteRequest,
+  WorkoutClipboard,
+  WorkoutEstimateRequest,
+  WorkoutPasteRequest,
+} from './workout-transfer';
 
 export interface CorosWorkoutAdapter {
   capabilitiesFor(accountId: string): Promise<CorosWriteCapabilities>;
@@ -16,6 +25,13 @@ export interface CorosWorkoutAdapter {
     idempotencyKey?: string,
   ): Promise<StructuredWorkout>;
   updateWorkout(accountId: string, workoutId: string, workout: StructuredWorkoutUpdate): Promise<StructuredWorkout>;
+  replaceWorkout(accountId: string, workoutId: string, workout: StructuredWorkoutUpdate): Promise<StructuredWorkout>;
+  copyWorkout(accountId: string, workoutId: string): Promise<WorkoutClipboard>;
+  pasteWorkout(accountId: string, request: WorkoutPasteRequest, idempotencyKey?: string): Promise<StructuredWorkout>;
+  copyWeek(accountId: string, request: WeekCopyRequest): Promise<WeekClipboard>;
+  pasteWeek(accountId: string, request: WeekPasteRequest): Promise<Record<string, unknown>>;
+  estimateWorkout(accountId: string, request: WorkoutEstimateRequest): Promise<CorosWorkoutEstimate>;
+  getWorkoutLoad(accountId: string, workoutId: string): Promise<CorosWorkoutEstimate>;
   deleteWorkout(accountId: string, workoutId: string): Promise<void>;
   scheduleWorkout(
     accountId: string,
