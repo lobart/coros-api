@@ -1,0 +1,43 @@
+meta {
+  name: Update Workout
+  type: http
+  seq: 15
+}
+
+put {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts/{{WORKOUT_ID}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+body:json {
+  {
+    "sport": "run",
+    "name": "Example updated run",
+    "description": "Synthetic Bruno request",
+    "steps": [
+      {
+        "kind": "work",
+        "name": "Steady running",
+        "durationType": "time",
+        "durationValue": 1800,
+        "target": {
+          "type": "none"
+        }
+      }
+    ],
+    "expectedDurationSeconds": 1800
+  }
+}
+
+docs {
+  # Update Workout
+
+  Updates only a workout created and mapped by this local wrapper. The example
+  ID is synthetic. Update is currently disabled until verified update and
+  library query fixtures exist.
+}

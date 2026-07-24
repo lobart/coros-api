@@ -1,0 +1,30 @@
+meta {
+  name: Schedule Workout
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts/{{WORKOUT_ID}}/schedule
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+body:json {
+  {
+    "scheduled_date": "2030-01-15",
+    "timezone": "Europe/Moscow"
+  }
+}
+
+docs {
+  # Schedule Workout
+
+  Schedules only a workout created and mapped by this local wrapper. The
+  operator fixture confirms the schedule write, but the public capability
+  remains disabled until a verified workout-library query fixture also exists.
+}

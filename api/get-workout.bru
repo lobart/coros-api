@@ -1,0 +1,23 @@
+meta {
+  name: Get Workout
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts/{{WORKOUT_ID}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+docs {
+  # Get Workout
+
+  Returns a mapped structured workout. The example ID is synthetic. This route
+  is currently unavailable because the repository has no verified library query
+  fixture.
+}

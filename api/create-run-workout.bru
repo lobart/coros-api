@@ -1,0 +1,64 @@
+meta {
+  name: Create Run Workout
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+  Idempotency-Key: example-run-001
+}
+
+body:json {
+  {
+    "sport": "run",
+    "name": "Example aerobic run",
+    "description": "Synthetic Bruno request",
+    "steps": [
+      {
+        "kind": "warmup",
+        "name": "Warm up",
+        "durationType": "time",
+        "durationValue": 600,
+        "target": {
+          "type": "none"
+        }
+      },
+      {
+        "kind": "work",
+        "name": "Aerobic running",
+        "durationType": "time",
+        "durationValue": 1200,
+        "target": {
+          "type": "none"
+        }
+      },
+      {
+        "kind": "cooldown",
+        "name": "Cool down",
+        "durationType": "time",
+        "durationValue": 600,
+        "target": {
+          "type": "none"
+        }
+      }
+    ],
+    "expectedDurationSeconds": 2400,
+    "externalSource": "bruno-example",
+    "externalWorkoutId": "example-run-001"
+  }
+}
+
+docs {
+  # Create Run Workout
+
+  Synthetic payload for the local wrapper. It is expected to return capability
+  unavailable until this fork has verified create and library query fixtures.
+  Enabling the write flag alone is insufficient.
+}

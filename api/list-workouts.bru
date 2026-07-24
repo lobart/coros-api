@@ -1,0 +1,22 @@
+meta {
+  name: List Workouts
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+docs {
+  # List Workouts
+
+  Lists workout-library summaries through the local wrapper. This is currently
+  unavailable because the repository has no verified library query fixture.
+}

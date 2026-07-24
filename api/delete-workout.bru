@@ -1,0 +1,23 @@
+meta {
+  name: Delete Workout
+  type: http
+  seq: 16
+}
+
+delete {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts/{{WORKOUT_ID}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+docs {
+  # Delete Workout
+
+  Deletes only a workout created and mapped by this local wrapper. The example
+  ID is synthetic. Delete is currently disabled until a verified delete fixture
+  exists.
+}

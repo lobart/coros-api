@@ -1,0 +1,54 @@
+meta {
+  name: Create Bike Workout
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/workouts
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+  Idempotency-Key: example-bike-001
+}
+
+body:json {
+  {
+    "sport": "bike",
+    "name": "Example endurance ride",
+    "description": "Synthetic Bruno request",
+    "steps": [
+      {
+        "kind": "warmup",
+        "name": "Easy spinning",
+        "durationType": "time",
+        "durationValue": 600,
+        "target": {
+          "type": "none"
+        }
+      },
+      {
+        "kind": "work",
+        "name": "Steady riding",
+        "durationType": "time",
+        "durationValue": 1800,
+        "target": {
+          "type": "none"
+        }
+      }
+    ],
+    "expectedDurationSeconds": 2400,
+    "externalSource": "bruno-example",
+    "externalWorkoutId": "example-bike-001"
+  }
+}
+
+docs {
+  # Create Bike Workout
+
+  Synthetic payload for contract inspection. Bike creation is not currently a
+  verified capability. The checked-in fixtures enable no library CRUD.
+}

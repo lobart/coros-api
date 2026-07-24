@@ -13,6 +13,10 @@ anytime.
 - Create a `.env` file (see [.env.example](.env.example)) with your email, password and the Coros API URL
 - Run `pnpm nest start -- export-activities -out OUT_DIR`.
 
+The email/password flow is retained only for backward compatibility with the
+original export commands. New integrations should use interactive browser
+authorization; the athlete enters credentials directly on `t.coros.com`.
+
 **Options:**
 
 ```
@@ -88,6 +92,62 @@ or logged by these operations.
 
 These endpoints are part of the non-public COROS Training Hub API. Keep them
 behind an application feature flag and expect protocol changes.
+
+## Multi-account interactive authorization
+
+Install the Playwright browser once:
+
+```shell
+pnpm exec playwright install chromium
+```
+
+Generate a 32-byte encryption key and keep it outside source control:
+
+```shell
+openssl rand -base64 32
+```
+
+Set `COROS_SESSION_ENCRYPTION_KEY`, then run:
+
+```shell
+pnpm nest start -- auth-browser --account-id local-athlete-alias --region eu
+```
+
+A normal Chromium window opens. The athlete enters email, password, CAPTCHA and
+2FA directly on COROS. This process never receives or stores the password. Only
+the minimum validated Training Hub session is written to the AES-256-GCM vault.
+
+## Protocol research
+
+Write functionality is fail-closed. A capability is enabled only after a
+sanitized fixture confirms its request and response contract:
+
+```shell
+COROS_PROTOCOL_RECORDER_ENABLED=true \
+pnpm nest start -- record-workout-protocol \
+  --account-id disposable-test-account \
+  --region eu \
+  --scenario run-simple-time \
+  --confirm-write-research
+```
+
+The recorder is headed, does not bypass CAPTCHA/2FA, does not save HAR/video,
+and blocks deletion of entities not created by the current run.
+
+## Service API
+
+Build and start the localhost-only REST boundary:
+
+```shell
+pnpm build
+COROS_SERVICE_TOKEN=replace-with-a-long-random-secret pnpm start:http
+```
+
+All `/api/v1/coros/...` requests require
+`Authorization: Bearer $COROS_SERVICE_TOKEN`. Write operations additionally
+require `COROS_WRITE_API_ENABLED=true` and a verified regional protocol fixture.
+See [Workout write API](docs/workout-write-api.md) and
+[Athlete authentication](docs/athlete-authentication.md).
 
 ## Licence
 

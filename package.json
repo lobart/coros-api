@@ -7,6 +7,7 @@
     "format:check": "biome format src",
     "format:fix": "biome format --write src",
     "start": "nest start",
+    "start:http": "node dist/http-main",
     "start:prod": "node dist/main",
     "lint:fix": "biome check --write --no-errors-on-unmatched .",
     "lint:check": "biome check --no-errors-on-unmatched .",
@@ -15,14 +16,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/xballoy/coros-api.git"
+    "url": "git+https://github.com/lobart/coros-api.git"
   },
   "author": "Xavier Balloy",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/xballoy/coros-api/issues"
   },
-  "homepage": "https://github.com/xballoy/coros-api#readme",
+  "homepage": "https://github.com/lobart/coros-api#readme",
   "devDependencies": {
     "@biomejs/biome": "2.5.3",
     "@nestjs/cli": "11.0.23",
@@ -33,10 +34,12 @@
     "@swc/core": "1.15.43",
     "@tsconfig/node24": "24.0.4",
     "@types/node": "24.13.3",
+    "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "4.1.10",
     "fast-check": "4.8.0",
     "lefthook": "2.1.10",
     "msw": "2.15.0",
+    "supertest": "^7.2.2",
     "typescript": "6.0.3",
     "unplugin-swc": "1.5.9",
     "vitest": "4.1.10"
@@ -45,10 +48,12 @@
     "@nestjs/axios": "4.0.1",
     "@nestjs/common": "11.1.28",
     "@nestjs/core": "11.1.28",
+    "@nestjs/platform-express": "^11.1.28",
     "axios": "1.18.1",
     "dayjs": "1.11.21",
     "dotenv": "17.4.2",
     "nest-commander": "3.20.1",
+    "playwright": "^1.61.1",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "zod": "4.4.3"

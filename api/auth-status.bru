@@ -1,0 +1,22 @@
+meta {
+  name: Auth Status
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{LOCAL_API_URL}}/api/v1/coros/accounts/{{ACCOUNT_ID}}/status
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{SERVICE_TOKEN}}
+}
+
+docs {
+  # Auth Status
+
+  Returns only local connection metadata. Use an application-owned account
+  alias, never an email address or COROS user ID.
+}

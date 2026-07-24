@@ -1,0 +1,29 @@
+{
+  "fixtureId": "operator-20260720-simple-schedule",
+  "protocolVersion": "training-hub-web-v1",
+  "observedAt": "2026-07-20T13:26:29.000Z",
+  "region": "eu",
+  "scenario": "workout-schedule",
+  "verifiedOutcome": true,
+  "source": "sanitized operator capture",
+  "captures": [
+    {
+      "method": "POST",
+      "url": "https://teameuapi.coros.com/training/program/estimate?userId=<redacted:userId>&teamId=<redacted:teamId>",
+      "responseStatus": 200,
+      "responseResult": "0000"
+    },
+    {
+      "method": "POST",
+      "url": "https://teameuapi.coros.com/training/program/calculate?userId=<redacted:userId>&teamId=<redacted:teamId>",
+      "responseStatus": 200,
+      "responseResult": "0000"
+    },
+    {
+      "method": "POST",
+      "url": "https://teameuapi.coros.com/training/schedule/update?userId=<redacted:userId>&teamId=<redacted:teamId>",
+      "responseStatus": 200,
+      "responseResult": "0000"
+    }
+  ]
+}
