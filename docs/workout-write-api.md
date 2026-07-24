@@ -31,6 +31,27 @@ unscheduled externally managed workouts; it returns a new COROS workout ID.
 Use `GET .../capabilities` as the runtime source of truth. Do not infer support
 from implemented code or from the presence of a Bruno request.
 
+## Tested Workout Matrix
+
+The automated domain/mapper matrix currently passes for:
+
+- simple outdoor run without an intensity target;
+- indoor run with a heart-rate range;
+- trail run with a heart-rate ceiling;
+- running warm-up, work and cool-down;
+- running repeats with heart-rate work and recovery;
+- recovery run containing a rest step;
+- road cycling with a power range;
+- indoor cycling with a power range;
+- indoor cycling warm-up, work and cool-down;
+- indoor cycling power repeats with recovery.
+
+These are contract and mapper tests. Live EU provider round-trips are currently
+confirmed by sanitized fixtures for simple time-based running, running repeats
+with heart-rate targets and cycling with power targets. Pool swimming,
+distance-defined steps, pace targets, cadence targets, open steps and nested
+repeats remain fail-closed.
+
 ## Routes
 
 | Method | Route | Purpose | Current fixture gate |
